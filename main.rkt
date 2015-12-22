@@ -3,40 +3,48 @@
 (require (for-syntax racket/format))
 
 (begin-for-syntax
-  (define (source-span stx)
-    (define (source-location line column offset)
-      (hasheq 'line line
-              'column column
-              'offset offset))
+  (define (range stx)
+    (list (syntax-position stx) (syntax-span stx))))
 
-    (let ([line   (syntax-line stx)]
-          [column (syntax-column stx)]
-          [offset (syntax-position stx)]
-          [span   (syntax-span stx)])
-      (hasheq 'source (~a (syntax->datum stx))
-              'start (source-location line column offset)
-              'end   (source-location line (+ span column) (+ span offset))))))
+(define (variable-declarator-x id [init 'null])
+  (hasheq 'type "VariableDeclarator"
+          'id id
+          'init init))
 
-(define (variable-declarator binding [init #false])
-  (define ht (hasheq 'type "VariableDeclarator"
-                     'binding binding))
-  (if init
-      (hash-set ht 'init init)
-      ht))
-
-(define (variable-declaration . declarators)
+(define (variable-declaration-x . declarations)
   (hasheq 'type "VariableDeclaration"
           'kind "var"
-          'declarators declarators))
+          'declarations declarations))
+
+(define (identifier name)
+  (hasheq 'type "Identifier"
+          'name name))
+
+(define (literal value)
+  (hasheq 'type "Literal"
+          'value value))
 
 (define (attach-source ht loc)
-  (hash-set ht 'loc loc))
+  (hash-set ht 'range loc))
 
-(define-syntax (variable-declaration-x stx)
+(define-syntax (variable-declaration stx)
   (syntax-case stx ()
     [(_ declarator ...)
-     (with-syntax ([loc (source-span stx)])
-       #`(attach-source (variable-declaration declarator ...) loc))]))
+     (with-syntax ([loc (range stx)])
+       #`(attach-source (variable-declaration-x declarator ...) 'loc))]))
 
-(variable-declaration-x (variable-declarator "a" 0)
-                        (variable-declarator "b"))
+(define-syntax (variable-declarator stx)
+  (syntax-case stx ()
+    [(_ binding init ...)
+     (with-syntax ([loc (range stx)])
+       #`(attach-source (variable-declarator-x binding init ...) 'loc))]))
+
+(define test
+  (variable-declaration (variable-declarator (identifier "a") (literal 0))
+                        (variable-declarator (identifier "b"))))
+
+(require json)
+
+(call-with-output-file "js.json" #:exists 'truncate
+  (λ (out)
+    (display (jsexpr->string test) out)))

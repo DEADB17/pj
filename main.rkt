@@ -1,50 +1,45 @@
 #lang racket
 
-(require (for-syntax racket/format))
+(define (script . statements)
+  (hasheq 'type "Script"
+          'directives null
+          'statements statements))
 
-(begin-for-syntax
-  (define (range stx)
-    (list (syntax-position stx) (syntax-span stx))))
+(define (variable-declaration-statement declaration)
+  (hasheq 'type "VariableDeclarationStatement"
+          'declaration declaration))
 
-(define (variable-declarator-x id [init 'null])
-  (hasheq 'type "VariableDeclarator"
-          'id id
-          'init init))
-
-(define (variable-declaration-x . declarations)
+(define (variable-declaration . declarators)
   (hasheq 'type "VariableDeclaration"
           'kind "var"
-          'declarations declarations))
+          'declarators declarators))
 
-(define (identifier name)
-  (hasheq 'type "Identifier"
+(define (variable-declarator binding [init 'null])
+  (hasheq 'type "VariableDeclarator"
+          'binding binding
+          'init init))
+
+(define (binding-identifier name)
+  (hasheq 'type "BindingIdentifier"
           'name name))
 
-(define (literal value)
-  (hasheq 'type "Literal"
+(define (literal-numeric-expression value)
+  (hasheq 'type "LiteralNumericExpression"
           'value value))
 
-(define (attach-source ht loc)
-  (hash-set ht 'range loc))
 
-(define-syntax (variable-declaration stx)
-  (syntax-case stx ()
-    [(_ declarator ...)
-     (with-syntax ([loc (range stx)])
-       #`(attach-source (variable-declaration-x declarator ...) 'loc))]))
-
-(define-syntax (variable-declarator stx)
-  (syntax-case stx ()
-    [(_ binding init ...)
-     (with-syntax ([loc (range stx)])
-       #`(attach-source (variable-declarator-x binding init ...) 'loc))]))
-
-(define test
-  (variable-declaration (variable-declarator (identifier "a") (literal 0))
-                        (variable-declarator (identifier "b"))))
+(define sample
+  (script
+   (variable-declaration-statement
+    (variable-declaration
+     (variable-declarator
+      (binding-identifier "a")
+      (literal-numeric-expression 0))
+     (variable-declarator
+      (binding-identifier "b"))))))
 
 (require json)
 
-(call-with-output-file "js.json" #:exists 'truncate
+(call-with-output-file "sample-output.json" #:exists 'truncate
   (λ (out)
-    (display (jsexpr->string test) out)))
+    (display (jsexpr->string sample) out)))

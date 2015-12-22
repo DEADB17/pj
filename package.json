@@ -1,0 +1,15 @@
+{
+  "name": "pj",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "DEADB17@gmail.com",
+  "license": "GPL-3.0",
+  "dependencies": {
+    "shift-codegen": "^3.0.0",
+    "shift-reducer": "^2.0.4"
+  }
+}

@@ -1,34 +1,42 @@
 #lang racket
 
-(define (source-span stx)
-  (define (source-location line column offset)
-    (hasheq 'line line
-            'column column
-            'offset offset))
+(require (for-syntax racket/format))
 
-  (let ([line   (syntax-line stx)]
-        [column (syntax-column stx)]
-        [offset (syntax-position stx)]
-        [span   (syntax-span stx)])
-    (hasheq 'source (~a (syntax->datum stx))
-            'start (source-location line column offset)
-            'end   (source-location line (+ span column) (+ span offset)))))
+(begin-for-syntax
+  (define (source-span stx)
+    (define (source-location line column offset)
+      (hasheq 'line line
+              'column column
+              'offset offset))
 
-(define (variable-declarator stx binding init)
-  (hasheq 'type "VariableDeclarator"
-          'binding binding
-          'init init
-          'loc (source-span stx)))
+    (let ([line   (syntax-line stx)]
+          [column (syntax-column stx)]
+          [offset (syntax-position stx)]
+          [span   (syntax-span stx)])
+      (hasheq 'source (~a (syntax->datum stx))
+              'start (source-location line column offset)
+              'end   (source-location line (+ span column) (+ span offset))))))
 
-(define (variable-declaration stx . declarators)
+(define (variable-declarator binding [init #false])
+  (define ht (hasheq 'type "VariableDeclarator"
+                     'binding binding))
+  (if init
+      (hash-set ht 'init init)
+      ht))
+
+(define (variable-declaration . declarators)
   (hasheq 'type "VariableDeclaration"
           'kind "var"
-          'declarators declarators
-          'loc (source-span stx)))
+          'declarators declarators))
 
+(define (attach-source ht loc)
+  (hash-set ht 'loc loc))
 
-(define mt-stx #'"")
+(define-syntax (variable-declaration-x stx)
+  (syntax-case stx ()
+    [(_ declarator ...)
+     (with-syntax ([loc (source-span stx)])
+       #`(attach-source (variable-declaration declarator ...) loc))]))
 
-(variable-declaration mt-stx
-                      (variable-declarator mt-stx "a" 0)
-                      (variable-declarator mt-stx "b" 1))
+(variable-declaration-x (variable-declarator "a" 0)
+                        (variable-declarator "b"))
